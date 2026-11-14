@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Field Notes: Deep Space</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #e8e3d8;
+      --muted: #9e9a90;
+      --paper: #171816;
+      --panel: #20221f;
+      --panel-2: #292b27;
+      --line: #464941;
+      --orange: #e1a15b;
+      --blue: #79b4bd;
+      --green: #9bb38b;
+      --danger: #cf7865;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: #10110f;
+      overflow: hidden;
+    }
+
+    button {
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .app-shell { display: grid; grid-template-rows: 68px 1fr; height: 100vh; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      background: #131411;
+      z-index: 4;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 208px; }
+    .brand-mark {
+      width: 30px; height: 30px; display: grid; place-items: center;
+      border: 1px solid var(--orange); color: var(--orange); font-weight: 700;
+      transform: rotate(45deg); font-size: 13px;
+    }
+    .brand-mark span { transform: rotate(-45deg); }
+    .brand strong { display: block; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+    .brand small { color: var(--muted); font-size: 11px; }
+    .tabs { display: flex; height: 100%; gap: 4px; }
+    .tab {
+      border: 0; border-bottom: 2px solid transparent; background: transparent;
+      color: var(--muted); padding: 0 15px; letter-spacing: .08em; text-transform: uppercase;
+      font-size: 11px; display: flex; align-items: center; gap: 8px;
+    }
+    .tab:hover, .tab.active { color: var(--ink); border-bottom-color: var(--orange); }
+    .tab-main { border: 0; background: transparent; padding: 0; color: inherit; letter-spacing: inherit; text-transform: inherit; font-size: inherit; }
+    .tab-close {
+      width: 17px; height: 17px; border: 1px solid var(--line); background: transparent;
+      border-radius: 50%; color: var(--muted); line-height: 12px; padding: 0;
+      font-size: 13px; opacity: .8;
+    }
+    .tab-close:hover { color: var(--ink); border-color: var(--orange); }
+    .status { margin-left: auto; color: var(--muted); font-size: 11px; letter-spacing: .08em; }
+    .status i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 7px; }
+
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 370px; min-height: 0; }
+    .viewport { position: relative; min-width: 0; background: #090a09; }
+    #scene { width: 100%; height: 100%; display: block; }
+    .scene-label {
+      position: absolute; top: 20px; left: 22px; pointer-events: none;
+      text-transform: uppercase; letter-spacing: .14em; font-size: 11px; color: var(--muted);
+    }
+    .scene-label strong { display: block; color: var(--ink); font-size: 20px; letter-spacing: .04em; margin-top: 5px; }
+    .scale-badge {
+      position: absolute; right: 20px; top: 20px; padding: 9px 11px;
+      border: 1px solid var(--line); background: rgba(15, 16, 14, .82);
+      color: var(--orange); font-size: 11px; letter-spacing: .08em;
+    }
+    .help {
+      position: absolute; left: 20px; bottom: 18px; padding: 10px 12px;
+      background: rgba(15, 16, 14, .88); border: 1px solid var(--line);
+      color: var(--muted); font-size: 11px; line-height: 1.6;
+    }
+    .help b { color: var(--ink); font-weight: 500; }
+    .telemetry {
+      position: absolute; right: 20px; bottom: 18px; width: 170px; padding: 11px;
+      border: 1px solid var(--line); background: rgba(15, 16, 14, .88);
+      font-size: 11px; color: var(--muted); line-height: 1.8;
+    }
+    .telemetry span { color: var(--blue); float: right; }
+
+    .side-panel { min-height: 0; overflow: auto; padding: 20px; border-left: 1px solid var(--line); background: var(--paper); }
+    .eyebrow { color: var(--orange); letter-spacing: .14em; text-transform: uppercase; font-size: 10px; }
+    h1 { margin: 5px 0 8px; font-size: 25px; font-weight: 500; letter-spacing: -.02em; }
+    .lede { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0 0 18px; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 10px; }
+    .section-heading h2 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin: 0; color: var(--muted); }
+    .section-heading button { background: transparent; border: 0; color: var(--orange); font-size: 11px; }
+    .story-card {
+      border: 1px solid var(--line); background: var(--panel); padding: 14px; margin-bottom: 9px;
+      transition: border-color .2s, transform .2s;
+    }
+    .story-card:hover { border-color: var(--orange); transform: translateX(2px); }
+    .story-card.active { border-left: 3px solid var(--orange); }
+    .story-card .date { color: var(--orange); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+    .story-card h3 { margin: 7px 0 5px; font-size: 16px; font-weight: 500; }
+    .story-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .story-card button { border: 0; background: transparent; padding: 0; text-align: left; width: 100%; }
+    .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .fact { border: 1px solid var(--line); background: var(--panel); padding: 11px; }
+    .fact small { display: block; color: var(--muted); font-size: 10px; margin-bottom: 5px; }
+    .fact strong { font-size: 14px; font-weight: 500; }
+    .controls {
+      border: 1px solid var(--line); background: var(--panel); padding: 12px;
+      color: var(--muted); font-size: 11px; line-height: 1.8;
+    }
+    .controls kbd {
+      display: inline-block; min-width: 20px; padding: 1px 5px; text-align: center;
+      border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); margin-right: 3px;
+    }
+    .control-row { display: flex; gap: 4px; margin: 4px 0; align-items: center; }
+    .control-row span { margin-left: 5px; }
+    .site-list { display: grid; gap: 5px; }
+    .site {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      border: 1px solid transparent; padding: 8px 9px; background: var(--panel);
+      color: var(--muted); font-size: 11px; text-align: left;
+    }
+    .site:hover, .site.selected { border-color: var(--blue); color: var(--ink); }
+    .site small { color: var(--blue); white-space: nowrap; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 850px) {
+      body { overflow: auto; }
+      .app-shell { height: auto; min-height: 100vh; }
+      .topbar { overflow-x: auto; padding: 0 14px; gap: 10px; }
+      .brand { min-width: 180px; }
+      .workspace { display: block; }
+      .viewport { height: 62vh; min-height: 420px; }
+      .side-panel { border-left: 0; border-top: 1px solid var(--line); }
+      .status { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"><span>F</span></div>
+        <div><strong>Field Notes</strong><small>Deep-space mission archive</small></div>
+      </div>
+      <nav class="tabs" aria-label="Mission environments">
+        <div class="tab active" data-tab="moon"><button class="tab-main">Moon</button><button class="tab-close" aria-label="Retract Moon tab">×</button></div>
+        <div class="tab" data-tab="mars"><button class="tab-main">Mars</button><button class="tab-close" aria-label="Retract Mars tab">×</button></div>
+        <div class="tab" data-tab="deep-space"><button class="tab-main">Deep space</button><button class="tab-close" aria-label="Retract Deep space tab">×</button></div>
+      </nav>
+      <div class="status"><i></i>SIMULATION LINK STABLE</div>
+    </header>
+
+    <section class="workspace">
+      <div class="viewport">
+        <canvas id="scene" aria-label="Interactive scaled mission environment"></canvas>
+        <div class="scene-label"><span id="scene-kicker">LOCAL SURFACE VIEW</span><strong id="scene-title">Moon / Ocean of Storms</strong></div>
+        <div class="scale-badge" id="scale-badge">1 scene unit = 100 km</div>
+        <div class="help"><b>Navigate</b><br>Drag to inspect · scroll to zoom · click a site to focus</div>
+        <div class="telemetry">
+          <span id="distance-label">ALTITUDE</span> <span id="altitude">18.4 km</span><br>
+          LAT / LON <span id="coords">2.9° S / 23.3° W</span><br>
+          HEADING <span id="heading">090° E</span>
+        </div>
+      </div>
+
+      <aside class="side-panel">
+        <div class="eyebrow" id="panel-eyebrow">LUNAR TIMELINE · 1967—1972</div>
+        <h1 id="panel-title">Curiosity leaves a trail</h1>
+        <p class="lede" id="panel-lede">A bouncing scout becomes a human landing, then a moving laboratory. The sites are separated because the missions were separated—by geography, time, and purpose.</p>
+
+        <div class="section-heading"><h2>Mission sequence</h2><button id="retract-panel">Retract panel</button></div>
+        <div id="story-list"></div>
+
+        <div class="section-heading"><h2>Environment facts</h2></div>
+        <div class="facts" id="facts"></div>
+
+        <div class="section-heading"><h2>Landing sites</h2><button id="reset-view">Reset view</button></div>
+        <div class="site-list" id="site-list"></div>
+
+        <div class="section-heading"><h2>Flight controls</h2></div>
+        <div class="controls">
+          <div class="control-row"><kbd>W</kbd><kbd>S</kbd><span>forward / reverse</span></div>
+          <div class="control-row"><kbd>A</kbd><kbd>D</kbd><span>yaw left / right</span></div>
+          <div class="control-row"><kbd>R</kbd><kbd>F</kbd><span>ascend / descend</span></div>
+          <div class="control-row"><kbd>Shift</kbd><span>boost</span><kbd>Space</kbd><span>brake</span></div>
+          <div style="margin-top:7px">The craft nose points along its heading. Keep the crosshair on a site, then use the story cards to jump through the timeline.</div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+
+    const SCALE = 1 / 100;
+    const DATA = {
+      moon: {
+        title: "Moon / Ocean of Storms",
+        kicker: "LOCAL SURFACE VIEW",
+        eyebrow: "LUNAR TIMELINE · 1967—1972",
+        heading: "Curiosity leaves a trail",
+        lede: "A bouncing scout becomes a human landing, then a moving laboratory. The sites are separated because the missions were separated—by geography, time, and purpose.",
+        radius: 1737.4,
+        color: 0xaaa79c,
+        atmosphere: 0x68665e,
+        facts: [["Mean radius", "1,737.4 km"], ["Surface gravity", "1.62 m/s²"], ["Scale", "1 unit = 100 km"], ["View mode", "Surface / local"]],
+        sites: [
+          { name: "Surveyor 3", date: "April 1967", lat: -2.94, lon: -23.34, text: "The first scout in this sequence. It bounced twice before proving the lunar soil could hold a human lander." },
+          { name: "Apollo 11 · Eagle", date: "July 1969", lat: 0.674, lon: 23.473, text: "Humanity's first crewed landing, far from Surveyor 3 in the Sea of Tranquility." },
+          { name: "Apollo 15 · Falcon", date: "July 1971", lat: 26.132, lon: 3.634, text: "A mountain-and-crater mission near Hadley Rille, not a repeat of the first landing site." },
+          { name: "Apollo 17 · Challenger", date: "December 1972", lat: 20.19, lon: 30.772, text: "The final Apollo landing, in Taurus–Littrow, separated again by hundreds of kilometres." }
+        ]
+      },
+      mars: {
+        title: "Mars / Gale to Jezero",
+        kicker: "LOCAL SURFACE VIEW",
+        eyebrow: "MARTIAN TIMELINE · 1997—2024",
+        heading: "Robots learn to travel",
+        lede: "Mars is presented as a local surface window rather than a toy-sized globe. The landing sites are geographically separated and the rover story advances across distinct eras.",
+        radius: 3389.5,
+        color: 0xb56f4c,
+        atmosphere: 0x6d3f32,
+        facts: [["Mean radius", "3,389.5 km"], ["Surface gravity", "3.71 m/s²"], ["Scale", "1 unit = 100 km"], ["View mode", "Surface / local"]],
+        sites: [
+          { name: "Sojourner · Pathfinder", date: "July 1997", lat: 19.13, lon: -33.22, text: "A microwave-sized pioneer in Ares Vallis, far from the later rover routes." },
+          { name: "Spirit · Columbia Hills", date: "January 2004", lat: -14.568, lon: 175.473, text: "A marathon twin that climbed away from the equatorial landing plain." },
+          { name: "Curiosity · Gale Crater", date: "August 2012", lat: -4.5895, lon: -137.4417, text: "A nuclear-powered laboratory exploring an ancient crater lake system." },
+          { name: "Perseverance · Jezero", date: "February 2021", lat: 18.4446, lon: 77.4509, text: "A sample-caching rover in a different hemisphere, with Ingenuity scouting overhead." }
+        ]
+      },
+      "deep-space": {
+        title: "Deep space / outbound",
+        kicker: "MISSION ARCHIVE",
+        eyebrow: "DEEP-SPACE TIMELINE · 1972—PRESENT",
+        heading: "The trail continues outward",
+        lede: "The surface scenes become a memory here: four probes, four engineering choices, and discarded stages moving through an environment with no ground at all.",
+        radius: 1,
+        color: 0x31404b,
+        atmosphere: 0x25323a,
+        facts: [["Reference", "Solar-system scale"], ["Signal", "Long-baseline"], ["Scale", "Not to surface scale"], ["View mode", "Mission route"]],
+        sites: [
+          { name: "Pioneer 10", date: "1972", lat: 0, lon: 0, text: "The original deep-space scout, crossing the asteroid belt and visiting Jupiter." },
+          { name: "Voyager 1", date: "1977", lat: 0, lon: 0, text: "A pale-blue-dot perspective and the first human-made craft to enter interstellar space." },
+          { name: "Voyager 2", date: "1977", lat: 0, lon: 0, text: "The only spacecraft to visit all four giant outer planets." },
+          { name: "New Horizons", date: "2006", lat: 0, lon: 0, text: "A fast flyby probe that turned Pluto from a pixel into a world." }
+        ]
+      }
+    };
+
+    const canvas = document.querySelector("#scene");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setClearColor(0x090a09, 1);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100000);
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.minDistance = 5;
+    controls.maxDistance = 300;
+    controls.target.set(0, 0, 0);
+
+    const keyState = new Set();
+    let activeTab = "moon";
+    let activeSite = 0;
+    let environment = new THREE.Group();
+    let craft;
+    let siteMarkers = [];
+
+    scene.add(new THREE.AmbientLight(0x9b9b9b, 1.25));
+    const sun = new THREE.DirectionalLight(0xffead1, 2.3);
+    sun.position.set(6, 8, 5);
+    scene.add(sun);
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      renderer.setSize(rect.width, rect.height, false);
+      camera.aspect = rect.width / rect.height;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", resize);
+
+    function latLonToVector(lat, lon, radius) {
+      const phi = THREE.MathUtils.degToRad(lat);
+      const theta = THREE.MathUtils.degToRad(lon);
+      return new THREE.Vector3(
+        radius * Math.cos(phi) * Math.cos(theta),
+        radius * Math.sin(phi),
+        -radius * Math.cos(phi) * Math.sin(theta)
+      );
+    }
+
+    function makeCraft() {
+      const group = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.CapsuleGeometry(.22, .65, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0xd7d1bd, roughness: .7, metalness: .3 })
+      );
+      body.rotation.x = Math.PI / 2;
+      group.add(body);
+      const nose = new THREE.Mesh(
+        new THREE.ConeGeometry(.17, .35, 8),
+        new THREE.MeshStandardMaterial({ color: 0xd39b57, roughness: .6, metalness: .2 })
+      );
+      nose.rotation.x = Math.PI / 2;
+      nose.position.z = .5;
+      group.add(nose);
+      const wingMaterial = new THREE.MeshStandardMaterial({ color: 0x52757b, roughness: .8, metalness: .4 });
+      [-1, 1].forEach(side => {
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(.8, .03, .28), wingMaterial);
+        wing.position.x = side * .43;
+        group.add(wing);
+      });
+      group.position.set(0, 4.3, 5.2);
+      return group;
+    }
+
+    function disposeGroup(group) {
+      group.traverse(object => {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          materials.forEach(material => material.dispose());
+        }
+      });
+    }
+
+    function buildEnvironment() {
+      disposeGroup(environment);
+      scene.remove(environment);
+      environment = new THREE.Group();
+      siteMarkers = [];
+      const data = DATA[activeTab];
+
+      if (activeTab === "deep-space") {
+        buildDeepSpace(data);
+      } else {
+        const radius = data.radius * SCALE;
+        const globe = new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 96, 64),
+          new THREE.MeshStandardMaterial({ color: data.color, roughness: .93, metalness: 0 })
+        );
+        environment.add(globe);
+        const wire = new THREE.Mesh(
+          new THREE.SphereGeometry(radius * 1.002, 48, 32),
+          new THREE.MeshBasicMaterial({ color: data.atmosphere, wireframe: true, transparent: true, opacity: .08 })
+        );
+        environment.add(wire);
+
+        data.sites.forEach((site, index) => {
+          const markerPosition = latLonToVector(site.lat, site.lon, radius + .22);
+          const marker = new THREE.Group();
+          marker.position.copy(markerPosition);
+          marker.lookAt(new THREE.Vector3(0, 0, 0));
+          const pin = new THREE.Mesh(
+            new THREE.ConeGeometry(.11, .38, 8),
+            new THREE.MeshStandardMaterial({ color: index === activeSite ? 0xe1a15b : 0x79b4bd, emissive: index === activeSite ? 0x6b3512 : 0x102c32, emissiveIntensity: 1.4 })
+          );
+          pin.position.y = .2;
+          marker.add(pin);
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(.19, .23, 24),
+            new THREE.MeshBasicMaterial({ color: index === activeSite ? 0xe1a15b : 0x79b4bd, side: THREE.DoubleSide, transparent: true, opacity: .8 })
+          );
+          ring.rotation.x = -Math.PI / 2;
+          marker.add(ring);
+          marker.userData.site = index;
+          siteMarkers.push(marker);
+          environment.add(marker);
+        });
+        craft = makeCraft();
+        environment.add(craft);
+      }
+
+      scene.add(environment);
+      if (activeTab !== "deep-space") focusSite(activeSite, true);
+      updateSceneUi();
+    }
+
+    function buildDeepSpace(data) {
+      const stars = new THREE.Points(
+        new THREE.BufferGeometry(),
+        new THREE.PointsMaterial({ color: 0xc6d4ce, size: .06, transparent: true, opacity: .7 })
+      );
+      const positions = [];
+      for (let i = 0; i < 500; i++) {
+        positions.push((Math.random() - .5) * 80, (Math.random() - .5) * 45, (Math.random() - .5) * 80);
+      }
+      stars.geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      environment.add(stars);
+      const route = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(-18, -4, 8), new THREE.Vector3(-6, 2, 1), new THREE.Vector3(7, -1, -3), new THREE.Vector3(18, 5, -12)
+        ]),
+        new THREE.LineBasicMaterial({ color: data.color })
+      );
+      environment.add(route);
+      const probe = makeCraft();
+      probe.scale.setScalar(2.2);
+      probe.position.set(0, 2, 0);
+      environment.add(probe);
+      craft = probe;
+      camera.position.set(0, 4, 19);
+      controls.target.set(0, 0, 0);
+    }
+
+    function focusSite(index, moveCamera = true) {
+      if (activeTab === "deep-space") return;
+      activeSite = index;
+      const data = DATA[activeTab];
+      const radius = data.radius * SCALE;
+      const site = data.sites[index];
+      const point = siteMarkers[index] ? siteMarkers[index].position.clone() : latLonToVector(site.lat, site.lon, radius + .22);
+      const outward = point.clone().normalize();
+      if (moveCamera) {
+        camera.position.copy(point.clone().add(outward.clone().multiplyScalar(16)));
+        controls.target.copy(point);
+      }
+      if (craft) {
+        craft.position.copy(point.clone().add(outward.clone().multiplyScalar(1.7)));
+        craft.lookAt(point.clone().add(outward.clone().multiplyScalar(3)));
+      }
+      updateSceneUi();
+    }
+
+    function updateSceneUi() {
+      const data = DATA[activeTab];
+      document.querySelector("#scene-title").textContent = data.title;
+      document.querySelector("#scene-kicker").textContent = data.kicker;
+      document.querySelector("#panel-eyebrow").textContent = data.eyebrow;
+      document.querySelector("#panel-title").textContent = data.heading;
+      document.querySelector("#panel-lede").textContent = data.lede;
+      document.querySelector("#scale-badge").textContent = activeTab === "deep-space" ? "route view · not surface scale" : "1 scene unit = 100 km";
+      document.querySelector("#distance-label").textContent = activeTab === "deep-space" ? "DISTANCE" : "ALTITUDE";
+
+      document.querySelector("#story-list").innerHTML = data.sites.map((site, index) => `
+        <article class="story-card ${index === activeSite ? "active" : ""}">
+          <button data-site="${index}">
+            <div class="date">${site.date}</div>
+            <h3>${site.name}</h3>
+            <p>${site.text}</p>
+          </button>
+        </article>`).join("");
+      document.querySelector("#facts").innerHTML = data.facts.map(([label, value]) => `<div class="fact"><small>${label}</small><strong>${value}</strong></div>`).join("");
+      document.querySelector("#site-list").innerHTML = data.sites.map((site, index) => `
+        <button class="site ${index === activeSite ? "selected" : ""}" data-site="${index}">
+          <span>${site.name}</span><small>${site.lat >= 0 ? site.lat.toFixed(2) + "° N" : Math.abs(site.lat).toFixed(2) + "° S"}</small>
+        </button>`).join("");
+      document.querySelector("#coords").textContent = activeTab === "deep-space" ? "OUTBOUND / N-A" : formatCoords(data.sites[activeSite]);
+    }
+
+    function formatCoords(site) {
+      const lat = `${Math.abs(site.lat).toFixed(2)}° ${site.lat >= 0 ? "N" : "S"}`;
+      const lon = `${Math.abs(site.lon).toFixed(2)}° ${site.lon >= 0 ? "E" : "W"}`;
+      return `${lat} / ${lon}`;
+    }
+
+    function setTab(tab) {
+      activeTab = tab;
+      activeSite = 0;
+      buildEnvironment();
+      document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active", button.dataset.tab === tab));
+    }
+
+    document.querySelector(".tabs").addEventListener("click", event => {
+      const close = event.target.closest(".tab-close");
+      if (close) {
+        close.closest(".tab").classList.toggle("hidden");
+        return;
+      }
+      const tab = event.target.closest(".tab");
+      if (tab) setTab(tab.dataset.tab);
+    });
+    document.querySelector("#story-list").addEventListener("click", event => {
+      const button = event.target.closest("[data-site]");
+      if (button) focusSite(Number(button.dataset.site));
+    });
+    document.querySelector("#site-list").addEventListener("click", event => {
+      const button = event.target.closest("[data-site]");
+      if (button) focusSite(Number(button.dataset.site));
+    });
+    document.querySelector("#reset-view").addEventListener("click", () => focusSite(0));
+    document.querySelector("#retract-panel").addEventListener("click", () => document.querySelector(".side-panel").classList.toggle("hidden"));
+
+    window.addEventListener("keydown", event => {
+      keyState.add(event.key.toLowerCase());
+      if ([" ", "w", "a", "s", "d", "r", "f"].includes(event.key.toLowerCase())) event.preventDefault();
+    });
+    window.addEventListener("keyup", event => keyState.delete(event.key.toLowerCase()));
+    function updateCraft(delta) {
+      if (!craft) return;
+      const boost = keyState.has("shift") ? 2.8 : 1;
+      const speed = delta * boost * (keyState.has(" ") ? .12 : 1);
+      if (keyState.has("w")) craft.translateZ(speed);
+      if (keyState.has("s")) craft.translateZ(-speed);
+      if (keyState.has("a")) craft.rotation.y += delta * 1.4;
+      if (keyState.has("d")) craft.rotation.y -= delta * 1.4;
+      if (keyState.has("r")) craft.position.y += speed;
+      if (keyState.has("f")) craft.position.y -= speed;
+      document.querySelector("#heading").textContent = `${((THREE.MathUtils.radToDeg(craft.rotation.y) + 360) % 360).toFixed(0).padStart(3, "0")}°`;
+      const radius = activeTab === "deep-space" ? 0 : DATA[activeTab].radius * SCALE;
+      const distance = activeTab === "deep-space" ? craft.position.length() : Math.max(0, craft.position.length() - radius);
+      document.querySelector("#altitude").textContent = `${(distance * 100).toFixed(1)} km`;
+    }
+
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), .05);
+      updateCraft(delta);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    resize();
+    buildEnvironment();
+    animate();
+  </script>
+</body>
+</html>
